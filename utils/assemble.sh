@@ -130,6 +130,27 @@ if [[ $buildScript -eq 1 ]]; then
     chmod 755 $repo_dir/Installomator.sh
     # also update Labels.txt
     $repo_dir/Installomator.sh | tail -n +2 > $repo_dir/Labels.txt
+
+    # all the labels to DESCRIPTIONS.md
+    for lpath in $label_paths; do
+        if [[ -d $lpath ]]; then
+            for file in "$lpath"/*.sh(.); do
+            	echo "$file"
+            	# TODO: grep labels for lines not as case with ) or | in end
+            	# TODO: eval the variables
+            	# TODO: Filter the comments
+            	# TODO: output variables to file as md
+            	labelContent=$(grep -v "" "$file")
+                labelArray=( ${(f)labelContent} )
+
+
+            done
+
+            #cat "$lpath"/*.sh >> $destination_file
+        else
+            echo "# $lpath not a directory, skipping..."
+        fi
+    done
 fi
 
 # build a pkg when flag is set
