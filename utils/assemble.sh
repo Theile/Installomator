@@ -131,9 +131,16 @@ if [[ $buildScript -eq 1 ]]; then
     # also update Labels.txt
     $repo_dir/Installomator.sh | tail -n +2 > $repo_dir/Labels.txt
 
-    # all the labels to DESCRIPTIONS.md
+    # Verify uniq labels in file
+    if [[ $(wc -l $repo_dir/Labels.txt | sort | cut -w -f2) -ne $(wc -l $repo_dir/Labels.txt | sort | uniq | cut -w -f2) ]]; then
+        echo "Error in Labels.txt. Not all lines are uniq."
+        exit 99
+    fi
+
+    # Create DESCRIPTIONS.md with all labels
     for lpath in $label_paths; do
         if [[ -d $lpath ]]; then
+            echo "" > $repo_dir/DESCRIPTIONS.md
             for file in "$lpath"/*.sh(.); do
             	echo "$file"
             	# TODO: grep labels for lines not as case with ) or | in end
@@ -142,7 +149,7 @@ if [[ $buildScript -eq 1 ]]; then
             	# TODO: output variables to file as md
             	labelContent=$(grep -v "" "$file")
                 labelArray=( ${(f)labelContent} )
-
+                "${labelArray[@]}"
 
             done
 
