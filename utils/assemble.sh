@@ -105,7 +105,12 @@ cat "$fragments_dir/arguments.sh" >> $destination_file
 # all the labels
 for lpath in $label_paths; do
     if [[ -d $lpath ]]; then
-        cat "$lpath"/*.sh >> $destination_file
+        echo "" > ${destination_file}_temp
+        cat "$lpath"/*.sh >> ${destination_file}_temp
+        # NOTE: Remove # lines
+        # TODO: Remove description= lines (what about multiline with ''? See mactex.sh)
+        grep -v -E "(^\s*#)" ${destination_file}_temp >> $destination_file
+        rm ${destination_file}_temp
     else
         echo "# $lpath not a directory, skipping..."
     fi
@@ -117,6 +122,37 @@ cat "$fragments_dir/main.sh" >> $destination_file
 # set the executable bit
 chmod +x $destination_file
 
+    # Create DESCRIPTIONS.md with all labels
+    for lpath in $label_paths; do
+        if [[ -d $lpath ]]; then
+            echo "" > $repo_dir/DESCRIPTIONS.md
+            for file in "$lpath"/*.sh(.); do
+            	#echo "$file"
+            	description=""
+            	# grep labels for lines not as case with ) or | in end
+            	# TODO: grep
+            	# TODO: eval the variables
+            	# TODO: Filter the comments
+            	# TODO: output variables to file as md
+            	labelName=$(grep -E '^[a-z0-9\_-]*(\)|\|\\)$' "$file" | tr -d ')|\' | grep -v -E '^(broken.*|longversion|version|valuesfromarguments)$' | head -1)
+            	labelContent=$(grep -v -E '(^[a-z0-9\_-]*(\)|\|\\)$|;;|downloadURL|appNewVersion|printlog|runAsUser)' "$file" | grep -E "(name=|description=|^[^\s]*)")
+            	eval $labelContent
+                labelArray=( ${(f)labelContent} )
+                #eval "${labelArray[@]}"
+                echo "### $name ($labelName)"
+                echo
+                if [[ -n "$description" ]]; then
+                    echo "$description"
+                else
+                    echo "$labelContent" | grep -E "(^\s*#)" | head -50 | sed -E 's/^ *#+ *//'
+                fi
+                echo
+            done
+        else
+            echo "# $lpath not a directory, skipping..."
+        fi
+    done
+exit
 # run script with remaining arguments
 if [[ $runScript -eq 1 ]]; then
     $destination_file "$@"
@@ -131,33 +167,12 @@ if [[ $buildScript -eq 1 ]]; then
     # also update Labels.txt
     $repo_dir/Installomator.sh | tail -n +2 > $repo_dir/Labels.txt
 
-    # Verify uniq labels in file
-    if [[ $(wc -l $repo_dir/Labels.txt | sort | cut -w -f2) -ne $(wc -l $repo_dir/Labels.txt | sort | uniq | cut -w -f2) ]]; then
-        echo "Error in Labels.txt. Not all lines are uniq."
+    # Verify unique labels in file
+    if [[ $(cat $repo_dir/Labels.txt | sort | wc -l | cut -w -f2) -ne $( $repo_dir/Labels.txt | sort | uniq | wc -l | cut -w -f2) ]]; then
+        echo "Error in Labels.txt. Not all lines are unique:"
+        echo "$($repo_dir/Labels.txt | sort | uniq -d)"
         exit 99
     fi
-
-    # Create DESCRIPTIONS.md with all labels
-    for lpath in $label_paths; do
-        if [[ -d $lpath ]]; then
-            echo "" > $repo_dir/DESCRIPTIONS.md
-            for file in "$lpath"/*.sh(.); do
-            	echo "$file"
-            	# TODO: grep labels for lines not as case with ) or | in end
-            	# TODO: eval the variables
-            	# TODO: Filter the comments
-            	# TODO: output variables to file as md
-            	labelContent=$(grep -v "" "$file")
-                labelArray=( ${(f)labelContent} )
-                "${labelArray[@]}"
-
-            done
-
-            #cat "$lpath"/*.sh >> $destination_file
-        else
-            echo "# $lpath not a directory, skipping..."
-        fi
-    done
 fi
 
 # build a pkg when flag is set
